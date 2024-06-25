@@ -1,0 +1,344 @@
+# EKS setup for authenticated user gitlab (use IAM)
+
+This is in contrast to the Non-EKS authentication of gitlab user which is far more complicated (with certifaction requiremnets from the k8s api master controller)
+
+
+## Use the course3 EC2 controller beccause the .kube/config file will be overwritten.  Doing multiple setups on the Mac (kops, eksctl) along with docker k8s causes too many issues with the multiple .kube/config file instances
+
+Install eksctl on the ubuntu 22 EC2 controller
+
+https://docs.aws.amazon.com/emr/latest/EMR-on-EKS-DevelopmentGuide/setting-up-eksctl.html
+
+
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ df -k
+Filesystem      1K-blocks     Used Available Use% Mounted on
+/dev/root        16069568 10265676   5787508  64% /
+tmpfs              973504        0    973504   0% /dev/shm
+tmpfs              389404      904    388500   1% /run
+tmpfs                5120        0      5120   0% /run/lock
+efivarfs              128        4       120   4% /sys/firmware/efi/efivars
+/dev/nvme0n1p15    106832     6186    100646   6% /boot/efi
+tmpfs              194700        4    194696   1% /run/user/1000
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ ls
+01-simple-cluster.yaml  cluster.yaml  sample_yaml_files
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ sudo mv /tmp/eksctl /usr/local/bin
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ eksctl version
+0.183.0
+
+
+## On the EC2 controller set the KUBECONFIG file to point to a subdirectory eksctl in ~/.kube folder
+
+
+ubuntu@ip-172-31-21-52:~/.kube/eksctl$ vim config
+ubuntu@ip-172-31-21-52:~/.kube/eksctl$ ls
+config
+ubuntu@ip-172-31-21-52:~/.kube/eksctl$ cd ..
+ubuntu@ip-172-31-21-52:~/.kube$ ls
+cache  config  config_backup_start  eksctl
+ubuntu@ip-172-31-21-52:~/.kube$ pwd
+/home/ubuntu/.kube
+
+
+## Set up github on the remote EC2 controller, push the code from Mac to remote repo and pull all the code over to the remote EC2 controller.
+
+
+## configure the KUBECONFIG to point to the ~/.kube/config/eksctl/config file on the controller
+
+
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ echo $KUBECONFIG
+
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ export KUBECONFIG=~/.kube/eksctl/config
+
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ echo $KUBECONFIG
+/home/ubuntu/.kube/eksctl/config
+
+
+
+## AWS administrator IAM user to create the EKS cluster
+
+This is the ~/.aws/credentials Administrator IAM user not the gitlab IAM user.
+This is used just to rollout (create) the EKS cluster
+
+
+## upgrade the aws CLI from v1 to v2
+
+The latest eks version does not work with aws v1. Upgrade aws v1 to v2 
+
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
+
+
+Make sure to update the bash cache after upgrading
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ hash aws
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ hash -t aws
+/usr/local/bin/aws
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ aws --version
+aws-cli/2.17.0 Python/3.11.8 Linux/6.5.0-1020-aws exe/x86_64.ubuntu.22
+
+
+
+
+##  Bring up the EKS cluster from the controller using the cluster.yaml file.
+
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ cat cluster.yaml 
+# A simple example of ClusterConfig object:
+---
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  #name: cluster-dave
+  name: cluster2
+  #region: us-west-1
+  region: us-east-1
+
+nodeGroups:
+  - name: ng-1
+    # instanceType: t3.large
+    instanceType: t3.small
+    desiredCapacity: 3
+
+
+
+## To bring up the cluster
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ eksctl create cluster -f cluster.yaml
+
+
+
+## At some point the ~/.kube/eksctl/config file will be updated so that we can run kubectl command  on this EKS cluster.
+
+
+2024-06-21 00:03:24 [ℹ]  waiting for CloudFormation stack "eksctl-cluster2-nodegroup-ng-1"
+2024-06-21 00:03:24 [ℹ]  waiting for the control plane to become ready
+2024-06-21 00:03:25 [✔]  saved kubeconfig as "/home/ubuntu/.kube/eksctl/config" <<<<<<<<<<<<<<<<
+2024-06-21 00:03:25 [ℹ]  no tasks
+2024-06-21 00:03:25 [✔]  all EKS cluster resources for "cluster2" have been created
+2024-06-21 00:03:25 [ℹ]  nodegroup "ng-1" has 3 node(s)
+2024-06-21 00:03:25 [ℹ]  node "ip-192-168-11-31.ec2.internal" is ready
+2024-06-21 00:03:25 [ℹ]  node "ip-192-168-28-65.ec2.internal" is ready
+2024-06-21 00:03:25 [ℹ]  node "ip-192-168-55-211.ec2.internal" is ready
+2024-06-21 00:03:25 [ℹ]  waiting for at least 3 node(s) to become ready in "ng-1"
+2024-06-21 00:03:25 [ℹ]  nodegroup "ng-1" has 3 node(s)
+2024-06-21 00:03:25 [ℹ]  node "ip-192-168-11-31.ec2.internal" is ready
+2024-06-21 00:03:25 [ℹ]  node "ip-192-168-28-65.ec2.internal" is ready
+2024-06-21 00:03:25 [ℹ]  node "ip-192-168-55-211.ec2.internal" is ready
+2024-06-21 00:03:25 [✔]  created 1 nodegroup(s) in cluster "cluster2"
+2024-06-21 00:03:25 [✔]  created 0 managed nodegroup(s) in cluster "cluster2"
+2024-06-21 00:03:26 [ℹ]  kubectl command should work with "/home/ubuntu/.kube/eksctl/config", try 'kubectl --kubeconfig=/home/ubuntu/.kube/eksctl/config get nodes'
+2024-06-21 00:03:26 [✔]  EKS cluster "cluster2" in "us-east-1" region is ready
+
+
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ kubectl get node
+NAME                             STATUS   ROLES    AGE     VERSION
+ip-192-168-3-230.ec2.internal    Ready    <none>   5m36s   v1.30.0-eks-036c24b
+ip-192-168-49-222.ec2.internal   Ready    <none>   5m35s   v1.30.0-eks-036c24b
+ip-192-168-8-79.ec2.internal     Ready    <none>   5m31s   v1.30.0-eks-036c24b
+
+
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ kubectl get node -o wide
+NAME                             STATUS   ROLES    AGE     VERSION               INTERNAL-IP      EXTERNAL-IP      OS-IMAGE         KERNEL-VERSION                  CONTAINER-RUNTIME
+ip-192-168-3-230.ec2.internal    Ready    <none>   5m59s   v1.30.0-eks-036c24b   192.168.3.230    18.212.244.243   Amazon Linux 2   5.10.218-208.862.amzn2.x86_64   containerd://1.7.11
+ip-192-168-49-222.ec2.internal   Ready    <none>   5m58s   v1.30.0-eks-036c24b   192.168.49.222   54.173.222.235   Amazon Linux 2   5.10.218-208.862.amzn2.x86_64   containerd://1.7.11
+ip-192-168-8-79.ec2.internal     Ready    <none>   5m54s   v1.30.0-eks-036c24b   192.168.8.79     3.90.215.151     Amazon Linux 2   5.10.218-208.862.amzn2.x86_64   containerd://1.7.11
+
+
+
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ kubectl version
+Client Version: v1.29.3
+Kustomize Version: v5.0.4-0.20230601165947-6ce0bf390ce3
+Server Version: v1.30.0-eks-036c24b
+
+
+## Once cluster is up create a gitlab IAM user so that gitlab can perform CI/CD operations on the EKS cluster.
+
+This can be done via aws command line
+
+aws iam create-user --user-name gitlab
+
+
+## Create an access key and secret access key for the gitlab IAM user (this will be used to configure aws credentials Profile for gitlab,  with the aws configure command)
+
+aws iam create-access-key --user-name gitlab
+
+
+## Get the caller identity so that we can modify the ConfigMap file for the cluster
+
+aws sts get-caller-identity
+
+
+## Edit the AWS EKS ConfigMap to grant permissions for the gitlab user to the cluster (see next section below if this is not present)
+
+kubectl edit cm/aws-auth -n kube-system
+kubectl describe configmap -n kube-system aws-auth
+
+
+add the mapUsers block as shown below
+The cicd is the role which will be defined and bound to the user in a later step
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+data:
+  mapRoles: |
+    - rolearn: arn:aws:iam::xxxxxxxxx:role/eksctl-cluster2-nodegroup-ng-1-NodeInstanceRole-mvKM7JRuksKN
+      username: system:node:{{EC2PrivateDNSName}}
+      groups:
+        - system:bootstrappers
+        - system:nodes
+  mapUsers: |
+    - userarn: arn:aws:iam::xxxxxxxxxx:user/gitlab
+      username: gitlab
+      groups:
+        - cicd
+
+
+
+
+
+
+## If this is  not found on the cluster configuratin do the following:
+
+###  First download the template yaml file
+
+curl -o aws-auth-cm.yaml https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/aws-auth-cm.yaml
+
+### Next edit the file  aws-auth-cm.yaml
+
+Requirements: need the arn of the gitlab user (this information we have when we created the gitlab user; see above)
+Need the arn of the cluster instance role
+To get this arn go into the Cloudformatino stack and to the nodegroup link. Once in the nodegroup go to the Resources tab and scroll down until you see the NodeInstanceRole
+Click on the NodeInstanceRole and the arn will be there for copy.
+
+
+### edit the aws-auth-cm.yaml file with the information above, adding the mapUsers section for the gitlab user arn
+
+For example,
+
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ cat aws-auth-cm.yaml 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+data:
+  mapRoles: |
+    - rolearn: arn:aws:iam::xxxxxxxxx:role/eksctl-cluster2-nodegroup-ng-1-NodeInstanceRole-mvKM7JRuksKN
+      username: system:node:{{EC2PrivateDNSName}}
+      groups:
+        - system:bootstrappers
+        - system:nodes
+  mapUsers: |
+    - userarn: arn:aws:iam::xxxxxxxxxx:user/gitlab
+      username: gitlab
+      groups:
+        - cicd
+
+Save the changes.
+
+### apply the yaml file to the cluster configuration
+
+kubectl apply -f aws-auth-cm.yaml
+
+This will create the aws-auth ConfigMap file.
+
+
+
+## verfiy the contents of the ConfigMap aws-auth
+
+kubectl describe configmap -n kube-system aws-auth
+
+
+
+
+
+## Create a namspace "staging" for QA. The default namespace will be used for production.
+
+kubectl create namespace staging
+
+
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ kubectl get ns
+NAME              STATUS   AGE
+default           Active   27m
+kube-node-lease   Active   27m
+kube-public       Active   27m
+kube-system       Active   27m
+staging           Active   12s
+
+
+## create the role cicd in the staging namespace
+
+kubectl create role cicd --verb="*" --resource="*" --namespace staging
+
+### edit the role for apiGroups as * (all)
+
+
+kubectl edit role cicd --namespace staging
+
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  creationTimestamp: "2024-06-24T21:13:06Z"
+  name: cicd
+  namespace: staging
+  resourceVersion: "17758"
+  uid: 4363c650-21b3-4563-8c70-81d493a86c9d
+rules:
+- apiGroups:
+  - "*"    <<<<<<<<<<<<<<<<<<<<<<<<<
+  resources:
+  - '*'
+  verbs:
+  - '*'
+
+### bind the role cicd to gitlab user in the staging namespace
+
+
+kubectl create rolebinding cicd --role cicd --user=gitlab -n staging
+
+
+
+## Do the same for the default namespace
+
+kubectl create role cicd --verb="*" --resource="*" 
+kubectl edit role cicd
+kubectl create rolebinding cicd --role cicd --user=gitlab
+
+
+
+
+
+## create the aws configure credentials (Profile) for the gitlab user using the IAM keys created earlier
+
+aws configure --profile gitlab
+
+
+## Change the terminal AWS_PROFILE to gitab
+
+export AWS_PROFILE=gitlab
+
+Verify the setting with aws configure list
+
+
+## Validate the role privileges for this gitlab user profile in this terminal
+
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ kubectl get node
+Error from server (Forbidden): nodes is forbidden: User "gitlab" cannot list resource "nodes" in API group "" at the cluster scope
+
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ kubectl get pods -n staging
+No resources found in staging namespace.  <<<< has access
+
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ kubectl get pods 
+No resources found in default namespace.  <<< has access
+
+ubuntu@ip-172-31-21-52:~/course3_eksctl$ kubectl get pods -n kube-system
+Error from server (Forbidden): pods is forbidden: User "gitlab" cannot list resource "pods" in API group "" in the namespace "kube-system". <<<< does not have access
+
+
+
+
+
