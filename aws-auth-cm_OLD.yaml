@@ -5,14 +5,13 @@ metadata:
   namespace: kube-system
 data:
   mapRoles: |
-    - rolearn: arn:aws:iam::590183769797:role/eksctl-cluster2-nodegroup-ng-1-NodeInstanceRole-xP0lVkNerzuy
+    - rolearn: arn:aws:iam::590183769797:role/eksctl-cluster2-nodegroup-ng-1-NodeInstanceRole-KweZnj4vqAfL
       username: system:node:{{EC2PrivateDNSName}}
       groups:
         - system:bootstrappers
         - system:nodes
   mapUsers: |
-    - userarn: arn:aws:iam::590183769797:user/gitlab2
-      username: gitlab2
+    - userarn: arn:aws:iam::590183769797:user/gitlab
+      username: gitlab
       groups:
         - cicd
-
