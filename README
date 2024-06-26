@@ -327,7 +327,7 @@ Verify the setting with aws configure list
 ## Validate the role privileges for this gitlab user profile in this terminal
 
 ubuntu@ip-172-31-21-52:~/course3_eksctl$ kubectl get node
-Error from server (Forbidden): nodes is forbidden: User "gitlab" cannot list resource "nodes" in API group "" at the cluster scope
+Error from server (Forbidden): nodes is forbidden: User "gitlab" cannot list resource "nodes" in API group "" at the cluster scope   <<<< does not have access
 
 ubuntu@ip-172-31-21-52:~/course3_eksctl$ kubectl get pods -n staging
 No resources found in staging namespace.  <<<< has access
