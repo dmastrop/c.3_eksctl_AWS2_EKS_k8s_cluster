@@ -11,5 +11,6 @@ metadata:
 
 nodeGroups:
   - name: ng-1
-    instanceType: t3.large
+    #instanceType: t3.large
+    instanceType: t3.small
     desiredCapacity: 3
