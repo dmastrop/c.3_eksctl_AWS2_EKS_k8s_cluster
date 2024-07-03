@@ -1,6 +1,10 @@
 # EKS setup for authenticated user gitlab (use IAM)
 
 This is in contrast to the Non-EKS authentication of gitlab user which is far more complicated (with certifaction requiremnets from the k8s api master controller)
+This setup is part of the pre-requisites for the CI/CD project with gitlab and EKC cluster, at the following github repo:
+https://github.com/dmastrop/c.3-CI-CD-on-EKS-with-GitLab
+
+
 
 
 ## Use the course3 EC2 controller beccause the .kube/config file will be overwritten.  Doing multiple setups on the Mac (kops, eksctl) along with docker k8s causes too many issues with the multiple .kube/config file instances
