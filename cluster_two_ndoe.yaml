@@ -1,0 +1,18 @@
+# A simple example of ClusterConfig object:
+---
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  #name: cluster-dave
+  name: cluster2
+  #region: us-west-1
+  region: us-east-1
+  version: "1.26"  
+
+nodeGroups:
+  - name: ng-1
+    #instanceType: t3.large
+    instanceType: t3.small
+    #desiredCapacity: 3
+    desiredCapacity: 2
